@@ -9,10 +9,11 @@ const connectDB = async () => {
   }
 
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI is missing. Set it in backend/.env.');
+    }
+
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
 
     isConnected = true;
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);

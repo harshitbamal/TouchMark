@@ -41,7 +41,4 @@ const classSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Create index for faster searches
-classSchema.index({ code: 1 });
-
 module.exports = mongoose.model('Class', classSchema);

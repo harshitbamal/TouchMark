@@ -69,7 +69,37 @@ exports.register = async (req, res) => {
       message: error.message || 'Server error'
     });
   }
-};// Login
+};
+
+// Admin-only teacher account provisioning
+exports.createTeacher = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (await User.findOne({ email: normalizedEmail })) {
+      return res.status(409).json({ success: false, message: 'Email already registered' });
+    }
+
+    const teacher = await User.create({ name: name.trim(), email: normalizedEmail, password, role: 'teacher' });
+    return res.status(201).json({
+      success: true,
+      message: 'Teacher account created',
+      user: { id: teacher._id, name: teacher.name, email: teacher.email, role: teacher.role }
+    });
+  } catch (error) {
+    console.error('Create teacher error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+// Login
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;

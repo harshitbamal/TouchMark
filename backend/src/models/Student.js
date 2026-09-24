@@ -46,8 +46,4 @@ const studentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Create index for faster searches
-studentSchema.index({ rollNumber: 1 });
-studentSchema.index({ fingerprintId: 1 });
-
 module.exports = mongoose.model('Student', studentSchema);
