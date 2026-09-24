@@ -28,8 +28,22 @@ export function AttendanceScanner() {
   const popupTimeoutRef = useRef(null);
 
   useEffect(() => {
-    fetchClasses();
-    checkArduinoStatus();
+    let mounted = true;
+    classService.getAll().then((response) => {
+      if (mounted) setClasses(response.classes || []);
+    }).catch((error) => {
+      console.error('Error fetching classes:', error);
+      if (mounted) toast.error('Failed to load classes');
+    });
+    fingerprintService.checkStatus().then((status) => {
+      if (!mounted) return;
+      setArduinoStatus(status);
+      if (!status.ready) toast.error('Fingerprint scanner is not connected');
+    }).catch((error) => {
+      console.error('Error checking Arduino status:', error);
+      if (mounted) toast.error('Cannot connect to fingerprint scanner');
+    });
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
@@ -43,17 +57,7 @@ export function AttendanceScanner() {
     };
   }, []);
 
-  const fetchClasses = async () => {
-    try {
-      const response = await classService.getAll();
-      setClasses(response.classes || []);
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-      toast.error('Failed to load classes');
-    }
-  };
-
-  const checkArduinoStatus = async () => {
+  async function checkArduinoStatus() {
     try {
       const status = await fingerprintService.checkStatus();
       setArduinoStatus(status);

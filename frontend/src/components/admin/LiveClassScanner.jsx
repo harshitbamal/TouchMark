@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { classService, fingerprintService } from '../../services/api';
+import { useScannerStatus } from '../../hooks/useScannerStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -14,35 +15,28 @@ export function LiveClassScanner() {
   const [isLive, setIsLive] = useState(false);
   const [markedStudents, setMarkedStudents] = useState([]);
   const [currentStudent, setCurrentStudent] = useState(null);
-  const [arduinoStatus, setArduinoStatus] = useState({ ready: false, enrolled_count: 0 });
+  const { status: arduinoStatus, refresh: refreshArduinoStatus } = useScannerStatus();
   const [showStudentPopup, setShowStudentPopup] = useState(false);
   const scanIntervalRef = useRef(null);
 
   useEffect(() => {
-    fetchClasses();
-    checkArduinoStatus();
+    let mounted = true;
+    classService.getAll().then((response) => {
+      if (mounted) setClasses(response.classes || []);
+    }).catch(() => toast.error('Failed to load classes'));
     return () => {
+      mounted = false;
       if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
     };
   }, []);
 
-  const fetchClasses = async () => {
+  async function checkArduinoStatus() {
     try {
-      const response = await classService.getAll();
-      setClasses(response.classes || []);
-    } catch (error) {
-      toast.error('Failed to load classes');
-    }
-  };
-
-  const checkArduinoStatus = async () => {
-    try {
-      const status = await fingerprintService.checkStatus();
-      setArduinoStatus(status);
+      const status = await refreshArduinoStatus();
       if (!status.ready) {
         toast.error('⚠️ Arduino fingerprint scanner not connected!', { duration: 5000 });
       }
-    } catch (error) {
+    } catch {
       toast.error('Cannot connect to fingerprint scanner');
     }
   };
@@ -87,7 +81,7 @@ export function LiveClassScanner() {
         } else if (result.alreadyMarked) {
           toast(`⚠️ ${result.student.name} already marked today`, { icon: '⚠️', duration: 2000 });
         }
-      } catch (error) {
+      } catch {
         // Silent - no fingerprint detected
       }
     }, 2000);

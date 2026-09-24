@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { classService, studentService } from '../../services/api';
+import { classService } from '../../services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -13,6 +13,8 @@ export function ClassManager() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -43,11 +45,17 @@ export function ClassManager() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setSaving(true);
     try {
-      await classService.create(formData);
-      toast.success('Class created successfully!');
+      if (editingClass) {
+        await classService.update(editingClass._id, formData);
+        toast.success('Class updated successfully');
+      } else {
+        await classService.create(formData);
+        toast.success('Class created successfully!');
+      }
       setShowCreateDialog(false);
+      setEditingClass(null);
       setFormData({
         name: '',
         code: '',
@@ -61,8 +69,34 @@ export function ClassManager() {
       });
       fetchClasses();
     } catch (error) {
-      console.error('Error creating class:', error);
-      toast.error(error.response?.data?.message || 'Failed to create class');
+      console.error('Error saving class:', error);
+      toast.error(error.response?.data?.message || 'Failed to save class');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (classItem) => {
+    setEditingClass(classItem);
+    setFormData({
+      name: classItem.name || '',
+      code: classItem.code || '',
+      subject: classItem.subject || '',
+      teacher: classItem.teacher || '',
+      schedule: {
+        days: classItem.schedule?.days || [],
+        startTime: classItem.schedule?.startTime || '',
+        endTime: classItem.schedule?.endTime || '',
+      },
+    });
+    setShowCreateDialog(true);
+  };
+
+  const closeDialog = (open) => {
+    setShowCreateDialog(open);
+    if (!open) {
+      setEditingClass(null);
+      setFormData({ name: '', code: '', subject: '', teacher: '', schedule: { days: [], startTime: '', endTime: '' } });
     }
   };
 
@@ -185,7 +219,7 @@ export function ClassManager() {
                     variant="outline" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => toast.info('Edit feature coming soon')}
+                    onClick={() => handleEdit(classItem)}
                   >
                     <Edit className="h-3 w-3 mr-1" />
                     Edit
@@ -205,11 +239,11 @@ export function ClassManager() {
       )}
 
       {/* Create Class Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={closeDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Class</DialogTitle>
-            <DialogDescription>Add a new class to the system</DialogDescription>
+            <DialogTitle>{editingClass ? 'Edit Class' : 'Create New Class'}</DialogTitle>
+            <DialogDescription>{editingClass ? 'Update the class details and schedule.' : 'Add a new class to the system.'}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -305,10 +339,10 @@ export function ClassManager() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => closeDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create Class</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Saving…' : editingClass ? 'Save Changes' : 'Create Class'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

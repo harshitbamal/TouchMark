@@ -1,156 +1,95 @@
-# 🔐 Fingerprint Attendance Management System
+# TouchMark — Fingerprint Attendance System
 
-An IoT-enabled biometric attendance tracking system using fingerprint authentication, built with React, Node.js, SQL Server, and Arduino.
+TouchMark is a role-based attendance app for administrators, teachers, and students. It combines a React dashboard, an Express/MongoDB API, and an optional Arduino fingerprint sensor.
 
-## 🌟 Features
+## Features
 
-- ✅ **Biometric Authentication** - Fingerprint-based attendance marking
-- ✅ **Real-time Tracking** - Instant attendance updates
-- ✅ **Admin Dashboard** - Comprehensive management interface
-- ✅ **Student Portal** - View personal attendance records
-- ✅ **Automated Reports** - Export attendance data to CSV/Excel
-- ✅ **IoT Integration** - Arduino/ESP32 hardware support
-- ✅ **Role-based Access** - Admin and Student roles
+- Role-based sign-in and student registration
+- Class creation, editing, scheduling, and enrollment
+- Fingerprint enrollment and live attendance scanning
+- Live scanner connection updates through an authenticated server-sent event stream
+- Attendance reports with student/class/date filters, pagination, and CSV/Excel exports
+- Student attendance history and summary statistics
+- Responsive administrator and teacher dashboards
 
-## 🎯 Project Overview
+## Stack
 
-This system eliminates manual attendance marking by using fingerprint sensors connected to Arduino/ESP32 devices. When a student scans their fingerprint, the system automatically marks their attendance in the database and displays it in real-time on the web dashboard.
+- Frontend: React 19, Vite, Tailwind CSS 4, React Router
+- API: Node.js, Express, MongoDB/Mongoose, JWT
+- Hardware: Arduino Uno and compatible fingerprint sensor (optional for dashboard-only review)
 
-### Demo
+## Run locally
 
-🌐 [Live Demo](https://your-demo-url.com)
+Requirements: Node.js 18 or newer, MongoDB, and (for biometric features) a configured Arduino and fingerprint sensor.
 
-### Screenshots
+1. Install frontend and backend dependencies:
 
-| Login Page | Admin Dashboard | Fingerprint Registration |
-|------------|-----------------|-------------------------|
-| ![Login](assets/screenshots/login.png) | ![Dashboard](assets/screenshots/dashboard.png) | ![Fingerprint](assets/screenshots/fingerprint.png) |
+   ```sh
+   cd frontend && npm install
+   cd ../backend && npm install
+   ```
 
-## 🛠️ Tech Stack
+2. Configure `backend/.env` using `backend/.env.example`. At minimum set `MONGODB_URI` and a long, random `JWT_SECRET`. Set `NODE_ENV=development` for local development.
 
-### Frontend
-- React 18
-- Tailwind CSS
-- Lucide Icons
-- Axios / React Query
+3. Start the API from `backend/`:
 
-### Backend
-- Node.js
-- Express.js
-- JWT Authentication
-- SerialPort (Arduino communication)
+   ```sh
+   npm run dev
+   ```
 
-### Database
-- SQL Server 2022
-- Stored Procedures
-- Views & Triggers
+   The API listens on port 5000 by default. It exposes `GET /api/health`.
 
-### Hardware
-- Arduino Uno / ESP32
-- R305 / AS608 Fingerprint Sensor
-- USB / WiFi connectivity
+4. Start the frontend from `frontend/`:
 
-## 📋 Prerequisites
+   ```sh
+   npm run dev
+   ```
 
-Before you begin, ensure you have:
+   Open the URL printed by Vite (port 3000 in this project). Vite proxies `/api` to `http://localhost:5000`.
 
-- Node.js 18+ installed
-- SQL Server 2022 Express (or PostgreSQL)
-- Arduino IDE (for hardware setup)
-- Git installed
-- Code editor (VS Code recommended)
+For local UI review, load the database-backed demo accounts with the seed command below. Public registration always creates a student account.
 
-## 🚀 Quick Start
+### Load interview demo data
 
-### 1. Clone Repository
-```bash
-git clone https://github.com/your-username/fingerprint-attendance-system.git
-cd fingerprint-attendance-system
-```
+With `NODE_ENV=development` and `MONGODB_URI` configured in `backend/.env`, run:
 
-### 2. Setup Database
-```bash
-cd database
-# Run setup script in SQL Server Management Studio
-# File: database/scripts/setup.sql
-```
-
-### 3. Setup Backend
-```bash
+```sh
 cd backend
-npm install
-cp .env.example .env
-# Edit .env with your database credentials
+npm run seed:demo
+```
+
+This idempotently creates one admin, two teachers, 10 students, four classes, class enrollments, and attendance over the previous five weekdays. Demo accounts use `TouchMarkDemo123!` by default; set `DEMO_ACCOUNT_PASSWORD` and optionally `DEMO_ADMIN_EMAIL` before seeding to use different local credentials. The seed command refuses to run outside development and does not reset existing data. Fingerprints stay unenrolled because real sensor templates must be captured on the connected device.
+
+### Create accounts
+
+- Sign in as the administrator, open **Students**, and create student accounts with temporary passwords; each login is created with its student profile.
+- Open **Teacher accounts** to provision teacher logins.
+- Share each temporary password out of band. Users can change it from the profile menu after signing in.
+- Public student registration remains available and always assigns the student role on the server.
+
+For production, create the first administrator with `BOOTSTRAP_ADMIN_EMAIL` and a unique `BOOTSTRAP_ADMIN_PASSWORD` of at least 12 characters in a one-off backend environment, then run `npm run create:admin`. Remove those bootstrap variables after the command completes.
+
+## Production deployment
+
+For Render, follow [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md); the root `render.yaml` defines the API and frontend services.
+
+- Build the frontend with `cd frontend && npm run build`; deploy `frontend/dist` to a static host.
+- Deploy `backend/` as a Node service and set `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and `PORT` in the hosting provider’s secret/environment settings. Point `MONGODB_URI` at a separate production database; do not reuse the development database populated by `npm run seed:demo`.
+- Set the frontend build variable `VITE_API_URL` to the deployed API base, including `/api` (for example, `https://api.example.com/api`). If the frontend and API share a host, the default `/api` works.
+- Permit the frontend origin in the API's `CORS_ORIGIN` setting and configure the host/proxy to allow long-lived `text/event-stream` responses for `/api/fingerprint/events`.
+- Configure the static host to send unknown paths to `index.html` so React Router routes load directly.
+- Set `ARDUINO_PORT` and `ARDUINO_BAUD_RATE` only on a backend machine physically connected to the scanner. Most cloud hosts cannot access a USB device; dashboard and account features can still run without it.
+- Use HTTPS and a strong, unique JWT secret. Do not deploy with `NODE_ENV=development`.
+
+## Commands
+
+```sh
+# frontend
 npm run dev
-# Backend runs on http://localhost:5000
-```
+npm run lint
+npm run build
 
-### 4. Setup Frontend
-```bash
-cd frontend
-npm install
-cp .env.example .env
-# Edit .env if needed
+# backend
+npm run dev
 npm start
-# Frontend runs on http://localhost:3000
 ```
-
-### 5. Setup Arduino
-```bash
-cd arduino/fingerprint-arduino-uno
-# Open fingerprint-arduino-uno.ino in Arduino IDE
-# Install Adafruit Fingerprint Sensor library
-# Upload to Arduino
-# Connect fingerprint sensor (see wiring diagram)
-```
-
-## 📖 Documentation
-
-Detailed documentation is available in the `docs/` folder:
-
-- [Installation Guide](docs/guides/installation.md)
-- [API Documentation](docs/api/)
-- [User Guide](docs/guides/admin-guide.md)
-- [Troubleshooting](docs/guides/troubleshooting.md)
-- [Contributing](CONTRIBUTING.md)
-
-## 🧪 Testing
-```bash
-# Backend tests
-cd backend
-npm test
-
-# Frontend tests
-cd frontend
-npm test
-
-# E2E tests
-npm run test:e2e
-```
-
-## 👥 Team
-
-| Name | Role 
-|------|------
-| Harshit Chaudhary | Team Lead 
-| Irfan Khan | Backend Dev 
-| Kamil| Frontend Dev 
-| Abhishek Pratap Singh | Database Dev 
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
-
----
-
-**⭐ Star this repo if you find it helpful!**

@@ -279,14 +279,62 @@ const fingerprintController = {
   },
 
   // Check Arduino connection status
-  checkStatus: async (req, res) => {
-    res.json({
-      success: true,
-      connected: arduinoService.isConnected(),
-      message: arduinoService.isConnected() 
-        ? 'Arduino is connected' 
-        : 'Arduino is not connected'
-    });
+  checkStatus: async (req, res, next) => {
+    try {
+      const connected = arduinoService.isConnected();
+      const enrolledCount = await Student.countDocuments({ isFingerprintRegistered: true });
+      res.json({
+        success: true,
+        connected,
+        ready: connected,
+        enrolled_count: enrolledCount,
+        message: connected ? 'Arduino is connected' : 'Arduino is not connected'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Stream scanner connection changes so clients do not need to poll.
+  statusEvents: async (req, res, next) => {
+    let keepAlive;
+    let enrolledCount = 0;
+    const sendStatus = (state) => {
+      if (res.writableEnded || res.destroyed) return;
+      res.write(`data: ${JSON.stringify({
+        state,
+        ready: arduinoService.isConnected(),
+        enrolled_count: enrolledCount
+      })}\n\n`);
+      res.flush?.();
+    };
+
+    try {
+      enrolledCount = await Student.countDocuments({ isFingerprintRegistered: true });
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no'
+      });
+      res.flushHeaders?.();
+      sendStatus(arduinoService.isConnected() ? 'connected' : 'reconnecting');
+
+      const onStatus = ({ state }) => sendStatus(state);
+      arduinoService.on('connection-status', onStatus);
+      keepAlive = setInterval(() => {
+        res.write(': keep-alive\n\n');
+        res.flush?.();
+      }, 20000);
+
+      res.on('close', () => {
+        clearInterval(keepAlive);
+        arduinoService.off('connection-status', onStatus);
+      });
+    } catch (error) {
+      if (!res.headersSent) next(error);
+      else res.end();
+    }
   },
 
   // Delete fingerprint registration

@@ -1,17 +1,18 @@
-import { X } from 'lucide-react';
 import { useEffect } from 'react';
 
 export function Dialog({ open, onOpenChange, children }) {
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
+    if (open) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onOpenChange(false);
     };
-  }, [open]);
+    if (open) document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open, onOpenChange]);
 
   if (!open) return null;
 
@@ -30,7 +31,7 @@ export function Dialog({ open, onOpenChange, children }) {
 
 export function DialogContent({ children, className = '' }) {
   return (
-    <div className={`relative bg-background rounded-lg border shadow-lg p-6 ${className}`}>
+    <div role="dialog" aria-modal="true" className={`relative bg-background rounded-lg border shadow-lg p-6 ${className}`}>
       {children}
     </div>
   );

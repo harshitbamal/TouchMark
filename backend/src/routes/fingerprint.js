@@ -8,6 +8,7 @@ router.use(authenticateToken);
 
 // Check Arduino connection status
 router.get('/status', fingerprintController.checkStatus);
+router.get('/events', isTeacherOrAdmin, fingerprintController.statusEvents);
 
 // Get all registered fingerprints
 router.get('/registered', fingerprintController.getRegistered);

@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Relative by default so a deployed frontend can call an API on the same host.
+// Set VITE_API_URL when the API is hosted on a separate domain.
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Create axios instance
 const api = axios.create({
@@ -27,9 +29,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const requestUrl = error.config?.url || '';
+      const isLoginRequest = requestUrl.endsWith('/auth/login');
+      if (!isLoginRequest) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -42,8 +48,8 @@ export const authService = {
     return response.data;
   },
 
-  login: async (email, password, role) => {
-    const response = await api.post('/auth/login', { email, password, role });
+  login: async (email, password) => {
+    const response = await api.post('/auth/login', { email, password });
     if (response.data.success) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -53,6 +59,16 @@ export const authService = {
 
   createTeacher: async (teacherData) => {
     const response = await api.post('/auth/teachers', teacherData);
+    return response.data;
+  },
+
+  createStudent: async (studentData) => {
+    const response = await api.post('/auth/students', studentData);
+    return response.data;
+  },
+
+  changePassword: async (passwordData) => {
+    const response = await api.post('/auth/password', passwordData);
     return response.data;
   },
 
@@ -221,6 +237,21 @@ export const classService = {
 
   addStudent: async (classId, studentId) => {
     const response = await api.post(`/classes/${classId}/students`, { studentId });
+    return response.data;
+  },
+
+  requestEnrollment: async (classId) => {
+    const response = await api.post(`/classes/${classId}/enrollment-requests`);
+    return response.data;
+  },
+
+  getEnrollmentRequests: async () => {
+    const response = await api.get('/classes/enrollment-requests');
+    return response.data;
+  },
+
+  reviewEnrollmentRequest: async (classId, studentId, decision) => {
+    const response = await api.post(`/classes/${classId}/enrollment-requests/${studentId}/${decision}`);
     return response.data;
   },
 

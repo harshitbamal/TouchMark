@@ -22,6 +22,12 @@ const classSchema = new mongoose.Schema({
     trim: true
   },
   schedule: {
+    days: [{
+      type: String,
+      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    }],
+    // Keep the legacy single-day field readable for records created before
+    // schedules supported multiple days.
     day: {
       type: String,
       enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -32,6 +38,17 @@ const classSchema = new mongoose.Schema({
   students: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student'
+  }],
+  enrollmentRequests: [{
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student',
+      required: true
+    },
+    requestedAt: {
+      type: Date,
+      default: Date.now
+    }
   }],
   isActive: {
     type: Boolean,

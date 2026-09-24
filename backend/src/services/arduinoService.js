@@ -16,6 +16,7 @@ class ArduinoService extends EventEmitter {
     try {
       const portPath = process.env.ARDUINO_PORT || 'COM3';
       const baudRate = parseInt(process.env.ARDUINO_BAUD_RATE) || 9600;
+      if (!this.isConnected()) this.emit('connection-status', { state: 'reconnecting', ready: false });
 
       console.log(`🔌 Connecting to Arduino on ${portPath}...`);
 
@@ -42,6 +43,7 @@ class ArduinoService extends EventEmitter {
       this.port.on('open', () => {
         console.log(`✅ Arduino connected on ${portPath}`);
         this.connected = true;
+        this.emit('connection-status', { state: 'connected', ready: true });
         this.emit('connected');
         this.stopReconnect();
       });
@@ -49,6 +51,7 @@ class ArduinoService extends EventEmitter {
       this.port.on('close', () => {
         console.log('⚠️  Arduino disconnected');
         this.connected = false;
+        this.emit('connection-status', { state: 'disconnected', ready: false });
         this.emit('disconnected');
         this.startReconnect();
       });
@@ -56,7 +59,9 @@ class ArduinoService extends EventEmitter {
       this.port.on('error', (err) => {
         console.error('❌ Arduino error:', err.message);
         this.connected = false;
-        this.emit('error', err);
+        this.emit('connection-status', { state: 'reconnecting', ready: false });
+        this.emit('device-error', err);
+        this.startReconnect();
       });
 
       // Listen for data
@@ -216,6 +221,8 @@ class ArduinoService extends EventEmitter {
   startReconnect() {
     if (this.reconnectInterval) return;
 
+    this.emit('connection-status', { state: 'reconnecting', ready: false });
+
     console.log('🔄 Starting auto-reconnect...');
     this.reconnectInterval = setInterval(() => {
       console.log('🔄 Attempting to reconnect to Arduino...');
@@ -250,9 +257,12 @@ class ArduinoService extends EventEmitter {
 // Singleton instance
 const arduinoService = new ArduinoService();
 
-// Auto-connect on startup
-setTimeout(() => {
-  arduinoService.connect();
-}, 1000);
+// Cloud hosts do not have access to the local USB scanner. Auto-connect locally,
+// or in production only when a hardware port was explicitly configured.
+if (process.env.NODE_ENV !== 'production' || process.env.ARDUINO_PORT) {
+  setTimeout(() => {
+    arduinoService.connect();
+  }, 1000);
+}
 
 module.exports = arduinoService;

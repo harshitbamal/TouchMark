@@ -1,6 +1,5 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // Register student
 exports.register = async (req, res) => {
@@ -15,8 +14,10 @@ exports.register = async (req, res) => {
       });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedRollNumber = rollNumber.trim().toUpperCase();
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -25,7 +26,7 @@ exports.register = async (req, res) => {
     }
 
     // Check if roll number exists
-    const existingRoll = await Student.findOne({ rollNumber });
+    const existingRoll = await Student.findOne({ rollNumber: normalizedRollNumber });
     if (existingRoll) {
       return res.status(400).json({
         success: false,
@@ -39,8 +40,8 @@ exports.register = async (req, res) => {
     // Create student first
     const student = await Student.create({
       name,
-      rollNumber,
-      email,
+      rollNumber: normalizedRollNumber,
+      email: normalizedEmail,
       phone: phone || '',
       isFingerprintRegistered: false,
       classes: []
@@ -48,11 +49,11 @@ exports.register = async (req, res) => {
 
     // Create user - password will be hashed by pre-save hook
     const user = await User.create({
-      email,
+      email: normalizedEmail,
       password: password,  // ✅ Pass plain password - model will hash it
       name,
       role: 'student',
-      rollNumber,
+      rollNumber: normalizedRollNumber,
       studentId: student._id
     });
 
@@ -78,8 +79,8 @@ exports.createTeacher = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Temporary password must be at least 8 characters' });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -99,35 +100,55 @@ exports.createTeacher = async (req, res) => {
   }
 };
 
+// Admin provisions a student login and matching student profile together.
+exports.createStudent = async (req, res) => {
+  let student;
+  try {
+    const { name, rollNumber, email, phone, password } = req.body;
+    if (!name?.trim() || !rollNumber?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ success: false, message: 'Name, roll number, email, and temporary password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Temporary password must be at least 8 characters' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedRollNumber = rollNumber.trim().toUpperCase();
+    if (await User.findOne({ email: normalizedEmail })) {
+      return res.status(409).json({ success: false, message: 'Email already registered' });
+    }
+    if (await Student.findOne({ rollNumber: normalizedRollNumber })) {
+      return res.status(409).json({ success: false, message: 'Roll number already exists' });
+    }
+
+    student = await Student.create({
+      name: name.trim(), rollNumber: normalizedRollNumber, email: normalizedEmail,
+      phone: phone?.trim() || '', isFingerprintRegistered: false, classes: [],
+    });
+    const user = await User.create({
+      name: name.trim(), email: normalizedEmail, password, role: 'student',
+      rollNumber: normalizedRollNumber, studentId: student._id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Student account created. Share the temporary password with the student.',
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      student,
+    });
+  } catch (error) {
+    if (student) await Student.findByIdAndDelete(student._id).catch(() => {});
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'Email or roll number already exists' });
+    console.error('Create student account error:', error);
+    return res.status(500).json({ success: false, message: 'Could not create student account' });
+  }
+};
+
 // Login
 exports.login = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
-
-    console.log('=== LOGIN ATTEMPT ===');
-    console.log('Email:', email);
-    console.log('Role:', role);
-
-    // HARDCODED ADMIN LOGIN
-    if (email === 'admin@rd.com' && password === 'admin123') {
-      const token = jwt.sign(
-        { id: 'admin', email: 'admin@rd.com', role: 'admin' },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
-
-      console.log('Admin login successful');
-      return res.json({
-        success: true,
-        token,
-        user: {
-          id: 'admin',
-          email: 'admin@rd.com',
-          name: 'Administrator',
-          role: 'admin'
-        }
-      });
-    }
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { password } = req.body;
 
     // Student login
     if (!email || !password) {
@@ -141,14 +162,6 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check role if provided
-    if (role && user.role !== role) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -176,8 +189,6 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
-
-    console.log('Login successful for:', email);
 
     res.json({
       success: true,
@@ -207,23 +218,38 @@ exports.logout = async (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 };
 
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new passwords are required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) return res.status(404).json({ success: false, message: 'Account not found' });
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+    if (await user.comparePassword(newPassword)) {
+      return res.status(400).json({ success: false, message: 'Choose a different password' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+    return res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ success: false, message: 'Could not change password' });
+  }
+};
+
 // Get current user
 exports.getCurrentUser = async (req, res) => {
   try {
     console.log('Getting current user for:', req.user); // Debug log
-
-    // Admin check
-    if (req.user.id === 'admin') {
-      return res.json({
-        success: true,
-        user: {
-          id: 'admin',
-          email: 'admin@rd.com',
-          name: 'Administrator',
-          role: 'admin'
-        }
-      });
-    }
 
     // Find user
     const user = await User.findById(req.user.id).select('-password');

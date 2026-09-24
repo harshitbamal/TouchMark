@@ -168,9 +168,9 @@ export function RegisterForm() {
 
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
-              <a href="/login" className="text-primary hover:underline">
+              <button type="button" onClick={() => navigate('/login')} className="font-medium text-primary hover:underline">
                 Login here
-              </a>
+              </button>
             </p>
           </form>
         </CardContent>
