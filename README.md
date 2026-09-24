@@ -2,8 +2,6 @@
 
 An IoT-enabled biometric attendance tracking system using fingerprint authentication, built with React, Node.js, SQL Server, and Arduino.
 
-![Project Banner](assets/images/banner.png)
-
 ## 🌟 Features
 
 - ✅ **Biometric Authentication** - Fingerprint-based attendance marking
@@ -13,7 +11,6 @@ An IoT-enabled biometric attendance tracking system using fingerprint authentica
 - ✅ **Automated Reports** - Export attendance data to CSV/Excel
 - ✅ **IoT Integration** - Arduino/ESP32 hardware support
 - ✅ **Role-based Access** - Admin and Student roles
-- ✅ **Cloud Ready** - Deploy to Railway, Heroku, or AWS
 
 ## 🎯 Project Overview
 
@@ -21,7 +18,6 @@ This system eliminates manual attendance marking by using fingerprint sensors co
 
 ### Demo
 
-🎥 [Watch Demo Video](link-to-video)  
 🌐 [Live Demo](https://your-demo-url.com)
 
 ### Screenshots
@@ -132,29 +128,14 @@ npm test
 npm run test:e2e
 ```
 
-## 📦 Deployment
-
-### Deploy Backend (Railway)
-```bash
-railway init
-railway up
-```
-
-### Deploy Frontend (Vercel)
-```bash
-vercel --prod
-```
-
-See [Deployment Guide](docs/architecture/deployment.md) for details.
-
 ## 👥 Team
 
-| Name | Role | GitHub |
-|------|------|--------|
-| Your Name | Team Lead | [@username](https://github.com/username) |
-| Member 2 | Frontend Dev | [@username](https://github.com/username) |
-| Member 3 | Backend Dev | [@username](https://github.com/username) |
-| Member 4 | Database Dev | [@username](https://github.com/username) |
+| Name | Role 
+|------|------
+| Harshit Chaudhary | Team Lead 
+| Irfan Khan | Backend Dev 
+| Kamil| Frontend Dev 
+| Abhishek Pratap Singh | Database Dev 
 
 ## 🤝 Contributing
 
@@ -169,17 +150,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 ## 📝 License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
-
-## 🙏 Acknowledgments
-
-- College Name
-- Project Guide: Prof. Name
-- Adafruit for fingerprint sensor library
-- Open source community
-
-## 📞 Contact
-
-Project Link: [https://github.com/your-username/fingerprint-attendance-system](https://github.com/your-username/fingerprint-attendance-system)
 
 ---
 

@@ -14,6 +14,7 @@ export function LoginForm() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,31 +30,19 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      // Determine role based on email
-      const role = email === 'admin@rd.com' ? 'admin' : 'student';
-      
-      console.log('Attempting login...', { email, role }); // Debug log
-      
       const result = await login(email, password, role);
-      
-      console.log('Login result:', result); // Debug log
 
       if (result.success) {
         toast.success('Login successful!');
         
         // Redirect based on role
-        if (result.user.role === 'admin') {
-          navigate('/admin');
-        } else {
-          navigate('/student');
-        }
+        navigate(result.user.role === 'student' ? '/student' : `/${result.user.role}`);
       } else {
         const errorMessage = result.message || 'Invalid credentials. Please try again.';
         setError(errorMessage);
         toast.error(errorMessage);
       }
     } catch (err) {
-      console.error('Login error:', err); // Debug log
       const errorMessage = err?.response?.data?.message || err?.message || 'Invalid credentials. Please try again.';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -107,6 +96,20 @@ export function LoginForm() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="role">Sign in as</Label>
+              <select
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+
             <Button type="submit" className="w-full h-11 text-base" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
@@ -137,7 +140,7 @@ export function LoginForm() {
                   <span className="text-xs">admin@rd.com / admin123</span>
                 </div>
                 <p className="text-xs text-blue-600 mt-2">
-                  Students: Use your registered email and password
+                  Students and teachers: Use an account created for your role.
                 </p>
               </div>
             </div>

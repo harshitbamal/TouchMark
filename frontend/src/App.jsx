@@ -7,6 +7,7 @@ import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 
 // Protected Route
 function ProtectedRoute({ children, allowedRoles }) {
@@ -29,7 +30,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div></div>;
-  if (user) return <Navigate to={user.role === 'student' ? '/student' : '/admin'} replace />;
+  if (user) return <Navigate to={`/${user.role}`} replace />;
   return children;
 }
 
@@ -40,6 +41,7 @@ function AppRoutes() {
       <Route path="/register" element={<PublicRoute><RegisterForm /></PublicRoute>} />
       <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
